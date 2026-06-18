@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>職安訓練管理後台</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1a1814;--ink2:#3d3a34;--ink3:#7a7570;
+  --paper:#faf9f6;--paper2:#f2f0eb;--paper3:#e8e5de;
+  --accent:#e8671a;--accent2:#c9540f;--accent-light:#fef3ec;
+  --red:#8b2020;--red-light:#fde8e8;
+  --green:#1a7a3a;--green-light:#e8f5ed;
+  --blue:#1a5fa8;--blue-light:#e8f0fb;
+  --radius:4px;--radius-lg:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh}
+input,select{font-family:'Noto Sans TC',sans-serif;font-size:14px;color:var(--ink);background:var(--paper);border:1px solid var(--paper3);border-radius:var(--radius);padding:9px 13px;width:100%;outline:none;transition:border-color .2s}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(232,103,26,.15)}
+button{font-family:'Noto Sans TC',sans-serif;cursor:pointer;border:none;border-radius:var(--radius);font-size:13px;font-weight:500;transition:all .15s}
+
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex;flex-direction:column}
+
+/* ── LOGIN ── */
+#s-login{align-items:center;justify-content:center;background:var(--paper)}
+.login-wrap{width:100%;max-width:380px;padding:20px}
+.login-logo{text-align:center;margin-bottom:2rem}
+.login-logo img{height:56px;margin-bottom:.75rem}
+.login-logo h1{font-size:1.1rem;font-weight:700;color:var(--ink);margin-bottom:.25rem}
+.login-logo p{font-size:.8rem;color:var(--ink3)}
+.login-card{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--paper3);padding:2rem;box-shadow:0 4px 20px rgba(0,0,0,.06)}
+.login-card h2{font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:1.25rem}
+.form-group{margin-bottom:1rem}
+.form-group label{display:block;font-size:.78rem;font-weight:700;color:var(--ink2);margin-bottom:.35rem}
+.login-err{background:var(--red-light);color:var(--red);font-size:.8rem;padding:.6rem .9rem;border-radius:var(--radius);margin-bottom:.9rem;display:none}
+.btn-login{width:100%;background:var(--accent);color:#fff;padding:.75rem;font-size:.9rem;font-weight:700;border-radius:var(--radius);margin-top:.5rem}
+.btn-login:hover{background:var(--accent2)}
+
+/* ── ADMIN LAYOUT ── */
+#s-admin{flex-direction:row}
+.sidebar{width:220px;flex-shrink:0;background:#fff;border-right:1px solid var(--paper3);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sb-logo{padding:1.2rem 1.4rem;border-bottom:1px solid var(--paper3)}
+.sb-logo img{height:32px}
+.sb-logo p{font-size:.72rem;color:var(--ink3);margin-top:.25rem}
+.sb-nav{flex:1;padding:.6rem 0}
+.nav-item{display:flex;align-items:center;gap:.6rem;padding:.65rem 1.4rem;font-size:.85rem;color:var(--ink3);cursor:pointer;transition:all .12s;border-left:3px solid transparent}
+.nav-item:hover{background:var(--paper);color:var(--ink)}
+.nav-item.active{background:var(--accent-light);color:var(--accent);border-left-color:var(--accent);font-weight:500}
+.nav-item .ni{font-size:1rem;width:18px;text-align:center}
+.sb-footer{padding:1rem 1.4rem;border-top:1px solid var(--paper3)}
+.sb-user{display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem}
+.su-av{width:30px;height:30px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:#fff;font-weight:700;flex-shrink:0}
+.su-name{font-size:.82rem;font-weight:500;color:var(--ink)}
+.su-role{font-size:.7rem;color:var(--ink3)}
+.btn-logout{width:100%;background:var(--paper2);color:var(--ink2);padding:.55rem;border-radius:var(--radius);font-size:.8rem}
+.btn-logout:hover{background:var(--paper3)}
+
+.admin-main{flex:1;overflow-y:auto}
+.tab-content{display:none;padding:2rem 2.25rem;max-width:1080px}
+.tab-content.active{display:block}
+.page-title{font-size:1.4rem;font-weight:700;margin-bottom:.25rem}
+.page-sub{font-size:.85rem;color:var(--ink3);margin-bottom:1.75rem}
+
+/* STAT CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.75rem}
+.stat-card{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius-lg);padding:1.1rem 1.25rem}
+.sc-val{font-size:1.75rem;font-weight:700;margin-bottom:.2rem}
+.sc-val.red{color:var(--red)}.sc-val.green{color:var(--green)}.sc-val.blue{color:var(--blue)}.sc-val.ink{color:var(--ink)}
+.sc-lbl{font-size:.75rem;color:var(--ink3)}
+
+/* TABLE */
+.table-wrap{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius-lg);overflow:hidden}
+.table-head{padding:1rem 1.25rem;border-bottom:1px solid var(--paper3);display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap}
+.table-head h3{font-size:.95rem;font-weight:700}
+.table-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.search-box{position:relative}
+.search-box input{padding:.5rem .75rem .5rem 2rem;font-size:.82rem;width:200px}
+.search-box .si{position:absolute;left:.6rem;top:50%;transform:translateY(-50%);color:var(--ink3);font-size:.85rem}
+.filter-select{width:120px;padding:.5rem .75rem;font-size:.82rem}
+table{width:100%;border-collapse:collapse}
+th{font-size:.75rem;font-weight:700;color:var(--ink3);text-align:left;padding:.65rem 1rem;background:var(--paper2);border-bottom:1px solid var(--paper3);white-space:nowrap}
+td{font-size:.85rem;padding:.75rem 1rem;border-bottom:1px solid var(--paper3);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--paper)}
+.badge{display:inline-flex;align-items:center;font-size:.75rem;font-weight:700;padding:.2rem .65rem;border-radius:12px}
+.badge.pass{background:var(--green-light);color:var(--green)}
+.badge.fail{background:var(--red-light);color:var(--red)}
+.table-empty{padding:3rem;text-align:center;color:var(--ink3);font-size:.9rem}
+
+/* BUTTONS */
+.btn-sm{padding:.45rem .9rem;font-size:.78rem}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-secondary{background:transparent;color:var(--ink2);border:1px solid var(--paper3)}
+.btn-secondary:hover{background:var(--paper2)}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:hover{background:#14602e}
+
+/* LOADING */
+.loading-wrap{padding:4rem;text-align:center;color:var(--ink3)}
+.spinner{display:inline-block;width:28px;height:28px;border:3px solid var(--paper3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:.75rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center;padding:1.5rem}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:var(--radius-lg);width:100%;max-width:560px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column}
+.modal-head{padding:1.1rem 1.4rem;border-bottom:1px solid var(--paper3);display:flex;align-items:center;justify-content:space-between}
+.modal-head h3{font-size:1rem;font-weight:700}
+.btn-close{background:var(--paper2);color:var(--ink2);width:28px;height:28px;border-radius:50%;font-size:1.1rem;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:1.4rem;overflow-y:auto;flex:1}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem}
+.detail-item{background:var(--paper2);border-radius:var(--radius);padding:.75rem 1rem}
+.detail-item .lbl{font-size:.72rem;color:var(--ink3);margin-bottom:.2rem}
+.detail-item .val{font-size:.9rem;font-weight:500}
+.score-big{text-align:center;padding:1.25rem;background:var(--paper2);border-radius:var(--radius-lg);margin-bottom:1rem}
+.score-big .num{font-size:2.5rem;font-weight:700}
+.score-big .num.pass{color:var(--green)}.score-big .num.fail{color:var(--red)}
+.score-big .sub{font-size:.82rem;color:var(--ink3);margin-top:.2rem}
+
+/* CONFIG */
+.config-card{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius-lg);padding:1.4rem;margin-bottom:1rem}
+.config-card h3{font-size:.95rem;font-weight:700;margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--paper3)}
+.config-row{display:flex;align-items:center;gap:1rem;margin-bottom:.75rem}
+.config-row label{font-size:.85rem;color:var(--ink2);width:140px;flex-shrink:0}
+.config-row input{max-width:320px}
+.config-hint{font-size:.75rem;color:var(--ink3);margin-top:.25rem}
+.url-display{font-size:.78rem;background:var(--paper2);border-radius:var(--radius);padding:.6rem .9rem;word-break:break-all;color:var(--ink2);margin-top:.5rem;font-family:monospace}
+
+/* ADMIN MANAGEMENT */
+.admin-list{display:flex;flex-direction:column;gap:0}
+.admin-row{display:flex;align-items:center;gap:1rem;padding:1rem 1.4rem;border-bottom:1px solid var(--paper3)}
+.admin-row:last-child{border-bottom:none}
+.admin-av{width:38px;height:38px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.9rem;color:#fff;font-weight:700;flex-shrink:0}
+.admin-info{flex:1;min-width:0}
+.admin-name{font-size:.9rem;font-weight:700;color:var(--ink)}
+.admin-meta{font-size:.78rem;color:var(--ink3);margin-top:.15rem}
+.admin-actions{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+.role-badge{font-size:.72rem;font-weight:700;padding:.2rem .75rem;border-radius:12px;background:var(--accent-light);color:var(--accent2);border:1px solid rgba(232,103,26,.25)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-danger:hover{background:#6b1818}
+
+/* MODAL FORM */
+.modal-form .form-group{margin-bottom:1rem}
+.modal-form label{display:block;font-size:.78rem;font-weight:700;color:var(--ink2);margin-bottom:.35rem}
+.modal-form input,.modal-form select{width:100%}
+.form-hint{font-size:.72rem;color:var(--ink3);margin-top:.25rem}
+
+/* PAGINATION */
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.25rem;border-top:1px solid var(--paper3);background:var(--paper);font-size:.8rem;color:var(--ink3)}
+.pg-btns{display:flex;gap:.4rem}
+.pg-btn{background:#fff;border:1px solid var(--paper3);color:var(--ink2);padding:.35rem .7rem;border-radius:var(--radius);font-size:.78rem;cursor:pointer}
+.pg-btn:hover{background:var(--paper2)}
+.pg-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pg-btn:disabled{opacity:.4;cursor:not-allowed}
+</style>
+</head>
+<body>
+
+<!-- ═══════ LOGIN ═══════ -->
+<div id="s-login" class="screen active">
+  <div class="login-wrap">
+    <div class="login-logo">
+      <img src="敦新LOGO.webp" alt="敦新" onerror="this.style.display='none'">
+      <h1>職安訓練管理後台</h1>
+      <p>Safety Training Administration</p>
+    </div>
+    <div class="login-card">
+      <h2>🔐 管理員登入</h2>
+      <div class="login-err" id="login-err">帳號或密碼錯誤，請重試</div>
+      <div class="form-group"><label>帳號</label><input type="text" id="login-user" placeholder="請輸入帳號" value="admin"></div>
+      <div class="form-group"><label>密碼</label><input type="password" id="login-pwd" placeholder="請輸入密碼" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn-login" onclick="doLogin()">登入</button>
+      <div style="margin-top:1rem;font-size:.75rem;color:var(--ink3);text-align:center">預設密碼請於 Apps Script 中 <code>getAdminPassword()</code> 修改</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ ADMIN ═══════ -->
+<div id="s-admin" class="screen">
+  <div class="sidebar">
+    <div class="sb-logo">
+      <img src="敦新LOGO.webp" alt="敦新" onerror="this.style.display='none'">
+      <p>職安訓練管理後台</p>
+    </div>
+    <nav class="sb-nav">
+      <div class="nav-item active" onclick="showTab('dashboard')"><span class="ni">📊</span>儀表板</div>
+      <div class="nav-item" onclick="showTab('records')"><span class="ni">📋</span>測驗紀錄</div>
+      <div class="nav-item" onclick="showTab('admins');loadAdminsFromGS()"><span class="ni">👤</span>管理員設定</div>
+    </nav>
+    <div class="sb-footer">
+      <div class="sb-user">
+        <div class="su-av" id="sb-avatar">A</div>
+        <div><div class="su-name" id="sb-name">管理員</div><div class="su-role">Administrator</div></div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">登出</button>
+    </div>
+  </div>
+
+  <div class="admin-main">
+
+    <!-- DASHBOARD -->
+    <div class="tab-content active" id="tab-dashboard">
+      <div class="page-title">儀表板</div>
+      <div class="page-sub" id="dash-updated">載入中…</div>
+      <div class="stat-grid" id="stat-grid">
+        <div class="stat-card"><div class="sc-val ink" id="st-total">—</div><div class="sc-lbl">總測驗人次</div></div>
+        <div class="stat-card"><div class="sc-val green" id="st-passed">—</div><div class="sc-lbl">通過人次</div></div>
+        <div class="stat-card"><div class="sc-val red" id="st-failed">—</div><div class="sc-lbl">未通過人次</div></div>
+        <div class="stat-card"><div class="sc-val blue" id="st-rate">—</div><div class="sc-lbl">整體通過率</div></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-head"><h3>最近測驗紀錄</h3><button class="btn-sm btn-primary" onclick="showTab('records')">查看全部 →</button></div>
+        <div id="dash-recent"></div>
+      </div>
+    </div>
+
+    <!-- RECORDS -->
+    <div class="tab-content" id="tab-records">
+      <div class="page-title">測驗紀錄</div>
+      <div class="page-sub">所有學員的測驗結果，可搜尋、篩選及匯出</div>
+      <div class="table-wrap">
+        <div class="table-head">
+          <h3>紀錄列表 <span id="rec-count" style="font-size:.8rem;font-weight:400;color:var(--ink3)"></span></h3>
+          <div class="table-actions">
+            <div class="search-box"><span class="si">🔍</span><input type="text" id="rec-search" placeholder="搜尋姓名、部門、工號…" oninput="filterRecords()"></div>
+            <select class="filter-select" id="rec-filter" onchange="filterRecords()">
+              <option value="">全部結果</option>
+              <option value="通過">通過</option>
+              <option value="未通過">未通過</option>
+            </select>
+            <button class="btn-sm btn-secondary" onclick="loadRecords()">🔄 重新整理</button>
+            <button class="btn-sm btn-green" onclick="exportCSV()">⬇ 匯出 CSV</button>
+          </div>
+        </div>
+        <div id="rec-table-wrap">
+          <div class="loading-wrap"><div class="spinner"></div><div>資料載入中…</div></div>
+        </div>
+        <div class="pagination" id="rec-pagination" style="display:none">
+          <span id="pg-info"></span>
+          <div class="pg-btns" id="pg-btns"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMINS -->
+    <div class="tab-content" id="tab-admins">
+      <div class="page-title">管理員設定</div>
+      <div class="page-sub">管理系統管理員帳號</div>
+      <div class="table-wrap">
+        <div class="table-head">
+          <h3>管理員列表</h3>
+          <button class="btn-sm btn-primary" onclick="openAdminModal()">＋ 新增管理員</button>
+        </div>
+        <div class="admin-list" id="admin-list"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ADMIN MODAL -->
+<div class="modal-overlay" id="modal-admin">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="admin-modal-title">新增管理員</h3>
+      <button class="btn-close" onclick="closeAdminModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-form">
+        <input type="hidden" id="adm-id">
+        <div class="form-group">
+          <label>姓名 <span style="color:var(--red)">*</span></label>
+          <input type="text" id="adm-name" placeholder="請輸入姓名">
+        </div>
+        <div class="form-group">
+          <label>帳號 <span style="color:var(--red)">*</span></label>
+          <input type="text" id="adm-username" placeholder="請輸入登入帳號">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="adm-email" placeholder="選填">
+        </div>
+        <div class="form-group">
+          <label>角色</label>
+          <select id="adm-role">
+            <option value="超級管理員">超級管理員</option>
+            <option value="一般管理員">一般管理員</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label id="adm-pwd-label">密碼 <span style="color:var(--red)">*</span></label>
+          <input type="password" id="adm-pwd" placeholder="請輸入密碼">
+          <div class="form-hint" id="adm-pwd-hint"></div>
+        </div>
+        <div id="adm-err" style="color:var(--red);font-size:.8rem;margin-bottom:.5rem;display:none"></div>
+        <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn-sm btn-secondary" onclick="closeAdminModal()">取消</button>
+          <button class="btn-sm btn-primary" onclick="saveAdmin()">儲存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>測驗詳情</h3>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════ CONFIG ═══════════
+const CFG_KEY = 'safety_admin_url';
+let GS_URL = localStorage.getItem(CFG_KEY) || 'https://script.google.com/macros/s/AKfycbxqcqmsgIvVXtISxxxihFtDaIGzwjq8vgR1ujESeklIdDrjHzuUpBFaryEjWEi2C7F82w/exec';
+let allRecords = [];
+let filteredRecords = [];
+let currentPage = 1;
+const PAGE_SIZE = 20;
+let sortCol = '';
+let sortAsc = true;
+
+function formatTimestamp(ts){
+  if(!ts) return String(ts);
+  const d = new Date(ts);
+  if(isNaN(d.getTime())) return String(ts);
+  try{
+    const p = {};
+    new Intl.DateTimeFormat('zh-TW',{
+      timeZone:'Asia/Taipei',
+      year:'numeric', month:'2-digit', day:'2-digit',
+      hour:'2-digit', minute:'2-digit', hour12:false
+    }).formatToParts(d).forEach(({type,value})=>{ p[type]=value; });
+    return `${p.year}/${p.month}/${p.day} ${p.hour}:${p.minute}`;
+  }catch(e){ return String(ts); }
+}
+
+function sortRecords(col){
+  if(sortCol === col){ sortAsc = !sortAsc; }
+  else { sortCol = col; sortAsc = true; }
+  const dir = sortAsc ? 1 : -1;
+  filteredRecords.sort((a,b)=>{
+    let va, vb;
+    if(col==='dept'){ va=a.dept||''; vb=b.dept||''; return va.localeCompare(vb,'zh-TW')*dir; }
+    if(col==='empId'){ va=String(a.empId??''); vb=String(b.empId??''); return va.localeCompare(vb,'zh-TW',{numeric:true,sensitivity:'base'})*dir; }
+    if(col==='name'){ va=a.name||''; vb=b.name||''; return va.localeCompare(vb,'zh-TW')*dir; }
+    if(col==='score'){ va=Number(a.score)||0; vb=Number(b.score)||0; return (va-vb)*dir; }
+    if(col==='pass'){ va=a.pass||''; vb=b.pass||''; return va.localeCompare(vb,'zh-TW')*dir; }
+    return 0;
+  });
+  currentPage = 1;
+  renderTable();
+}
+
+function sortArrow(col){
+  if(sortCol !== col) return '<span style="color:var(--paper3);font-size:.7rem;margin-left:3px">⇅</span>';
+  return `<span style="font-size:.7rem;margin-left:3px">${sortAsc?'▲':'▼'}</span>`;
+}
+
+// ═══════════ LOGIN ═══════════
+function doLogin(){
+  const user = document.getElementById('login-user').value.trim();
+  const pwd  = document.getElementById('login-pwd').value;
+  const err  = document.getElementById('login-err');
+  err.style.display = 'none';
+
+  if(!user || !pwd){ err.textContent='請填寫帳號及密碼'; err.style.display='block'; return; }
+
+  // 優先以試算表驗證；GS 無法連線時才降級使用本地快取
+  if(GS_URL){
+    err.textContent='驗證中…'; err.style.display='block';
+    fetch(`${GS_URL}?action=auth&user=${encodeURIComponent(user)}&pwd=${encodeURIComponent(pwd)}`)
+      .then(r=>r.json())
+      .then(d=>{
+        if(d.ok){ enterAdmin(d.name || user); }
+        else{ err.textContent='帳號或密碼錯誤，請重試'; }
+      })
+      .catch(()=>{
+        // GS 連線失敗，降級比對本地快取
+        const matched = getCachedAdmins().find(a => a.username === user && a.password === pwd);
+        if(matched){ enterAdmin(matched.name); }
+        else{ err.textContent='連線失敗且本地無符合帳號，請確認網路或 Apps Script URL 設定'; }
+      });
+    return;
+  }
+
+  // 無 GS_URL，僅比對本地快取
+  const matched = getCachedAdmins().find(a => a.username === user && a.password === pwd);
+  if(matched){ enterAdmin(matched.name); return; }
+  err.textContent='帳號或密碼錯誤，請重試';
+  err.style.display='block';
+}
+
+function enterAdmin(user){
+  document.getElementById('login-err').style.display='none';
+  document.getElementById('sb-name').textContent = user;
+  document.getElementById('sb-avatar').textContent = user.charAt(0).toUpperCase();
+  show('s-admin');
+  loadDashboard();
+  loadRecords();
+}
+
+function doLogout(){
+  show('s-login');
+  document.getElementById('login-pwd').value = '';
+}
+
+// ═══════════ NAVIGATION ═══════════
+function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function showTab(name){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>{ if(n.textContent.includes(tabLabel(name))) n.classList.add('active'); });
+}
+function tabLabel(n){ return {dashboard:'儀表板',records:'測驗紀錄',config:'系統設定'}[n]||n; }
+
+// ═══════════ DASHBOARD ═══════════
+function loadDashboard(){
+  if(!GS_URL){ renderDashboardDemo(); return; }
+  fetch(`${GS_URL}?action=stats`)
+    .then(r=>r.json())
+    .then(d=>{
+      document.getElementById('st-total').textContent  = d.total;
+      document.getElementById('st-passed').textContent = d.passed;
+      document.getElementById('st-failed').textContent = d.failed;
+      document.getElementById('st-rate').textContent   = d.passRate;
+      document.getElementById('dash-updated').textContent = '資料更新時間：' + new Date().toLocaleString('zh-TW');
+    })
+    .catch(()=>renderDashboardDemo());
+}
+
+function renderDashboardDemo(){
+  document.getElementById('st-total').textContent  = '—';
+  document.getElementById('st-passed').textContent = '—';
+  document.getElementById('st-failed').textContent = '—';
+  document.getElementById('st-rate').textContent   = '—';
+  document.getElementById('dash-updated').textContent = '⚠️ 尚未設定 Apps Script URL，請至「系統設定」完成設定';
+}
+
+function renderDashboardRecent(records){
+  const recent = [...records].reverse().slice(0,10);
+  const el = document.getElementById('dash-recent');
+  if(!recent.length){ el.innerHTML='<div class="table-empty">尚無測驗紀錄</div>'; return; }
+  el.innerHTML = `<table><thead><tr>
+    <th>測驗時間</th><th>部門</th><th>工號</th><th>姓名</th><th>分數</th><th>結果</th>
+  </tr></thead><tbody>${recent.map(r=>`<tr>
+    <td style="white-space:nowrap">${formatTimestamp(r.timestamp)}</td><td>${r.dept}</td><td style="color:var(--ink3)">${r.empId}</td>
+    <td><strong>${r.name}</strong></td>
+    <td><strong>${r.score * 5}</strong> / 100</td>
+    <td><span class="badge ${r.pass==='通過'?'pass':'fail'}">${r.pass}</span></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+
+// ═══════════ RECORDS ═══════════
+function loadRecords(){
+  const wrap = document.getElementById('rec-table-wrap');
+  wrap.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div>資料載入中…</div></div>';
+
+  if(!GS_URL){
+    allRecords = [];
+    renderTable();
+    renderDashboardRecent([]);
+    return;
+  }
+
+  fetch(`${GS_URL}?action=records`)
+    .then(r=>r.json())
+    .then(d=>{
+      allRecords = d.records || [];
+      filterRecords();
+      renderDashboardRecent(allRecords);
+      loadDashboard();
+    })
+    .catch(()=>{
+      wrap.innerHTML = '<div class="table-empty">❌ 無法連線至 Google 試算表，請確認 Apps Script URL 設定</div>';
+    });
+}
+
+function filterRecords(){
+  const q   = (document.getElementById('rec-search').value||'').toLowerCase();
+  const f   = document.getElementById('rec-filter').value;
+  filteredRecords = allRecords.filter(r=>{
+    const matchQ = !q || (r.name+r.dept+r.empId).toLowerCase().includes(q);
+    const matchF = !f || r.pass === f;
+    return matchQ && matchF;
+  });
+  currentPage = 1;
+  renderTable();
+}
+
+function renderTable(){
+  const total = filteredRecords.length;
+  document.getElementById('rec-count').textContent = total ? `（共 ${total} 筆）` : '';
+  const wrap = document.getElementById('rec-table-wrap');
+  const pg   = document.getElementById('rec-pagination');
+
+  if(!total){
+    wrap.innerHTML = `<div class="table-empty">${allRecords.length?'無符合條件的紀錄':'尚無測驗紀錄，等待學員完成測驗後自動同步'}</div>`;
+    pg.style.display = 'none'; return;
+  }
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const start = (currentPage-1)*PAGE_SIZE;
+  const rows  = filteredRecords.slice(start, start+PAGE_SIZE);
+
+  const thStyle = 'cursor:pointer;user-select:none;white-space:nowrap';
+  wrap.innerHTML = `<table><thead><tr>
+    <th>#</th>
+    <th style="${thStyle}" data-col="dept">部門${sortArrow('dept')}</th>
+    <th style="${thStyle}" data-col="empId">工號${sortArrow('empId')}</th>
+    <th style="${thStyle}" data-col="name">姓名${sortArrow('name')}</th>
+    <th style="${thStyle}" data-col="score">分數${sortArrow('score')}</th>
+    <th style="${thStyle}" data-col="pass">結果${sortArrow('pass')}</th>
+    <th>測驗時間</th><th>作答時間</th><th></th>
+  </tr></thead><tbody>${rows.map((r,i)=>`<tr>
+    <td style="color:var(--ink3)">${start+i+1}</td>
+    <td>${r.dept}</td>
+    <td style="color:var(--ink3)">${r.empId}</td>
+    <td><strong>${r.name}</strong></td>
+    <td><strong>${Number(r.score)*5}</strong> / 100</td>
+    <td><span class="badge ${r.pass==='通過'?'pass':'fail'}">${r.pass}</span></td>
+    <td style="white-space:nowrap">${formatTimestamp(r.timestamp)}</td>
+    <td style="color:var(--ink3)">${r.timeSpent}</td>
+    <td style="white-space:nowrap">
+      <button class="btn-sm btn-secondary" data-idx="${start+i}">詳情</button>
+      <button class="btn-sm btn-danger" data-del-idx="${start+i}" style="margin-left:.35rem">刪除</button>
+    </td>
+  </tr>`).join('')}</tbody></table>`;
+
+  // 綁定排序欄標題點擊事件
+  wrap.querySelectorAll('th[data-col]').forEach(th => {
+    th.addEventListener('click', () => sortRecords(th.dataset.col));
+  });
+  // 綁定詳情按鈕點擊事件
+  wrap.querySelectorAll('button[data-idx]').forEach(btn => {
+    btn.addEventListener('click', () => showDetail(Number(btn.dataset.idx)));
+  });
+  // 綁定刪除按鈕點擊事件
+  wrap.querySelectorAll('button[data-del-idx]').forEach(btn => {
+    btn.addEventListener('click', () => deleteRecord(Number(btn.dataset.delIdx)));
+  });
+
+  pg.style.display = 'flex';
+  document.getElementById('pg-info').textContent = `第 ${start+1}–${Math.min(start+PAGE_SIZE,total)} 筆，共 ${total} 筆`;
+  const btns = document.getElementById('pg-btns');
+  btns.innerHTML = `
+    <button class="pg-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>
+    ${Array.from({length:totalPages},(_,i)=>`<button class="pg-btn ${i+1===currentPage?'active':''}" onclick="goPage(${i+1})">${i+1}</button>`).join('')}
+    <button class="pg-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+}
+
+function goPage(n){
+  const total = Math.ceil(filteredRecords.length/PAGE_SIZE);
+  if(n<1||n>total) return;
+  currentPage=n; renderTable();
+  document.getElementById('tab-records').scrollTo({top:0,behavior:'smooth'});
+}
+
+// ═══════════ DELETE RECORD ═══════════
+function deleteRecord(idx){
+  const r = filteredRecords[idx];
+  if(!confirm(`確定要刪除「${r.name}（${r.dept}）」的測驗紀錄？`)) return;
+
+  const doLocalDelete = () => {
+    const empId = String(r.empId);
+    allRecords = allRecords.filter(x => String(x.empId) !== empId);
+    filterRecords();
+    renderDashboardRecent(allRecords);
+  };
+
+  if(!GS_URL){ doLocalDelete(); return; }
+
+  fetch(GS_URL, { method:'POST', body:JSON.stringify({ action:'deleteRecord', empId: r.empId }) })
+    .then(res => res.json())
+    .then(d => {
+      if(d.status === 'error'){ alert('刪除失敗：' + (d.message||'未知錯誤')); return; }
+      doLocalDelete();
+    })
+    .catch(() => doLocalDelete());
+}
+
+// ═══════════ DETAIL MODAL ═══════════
+function showDetail(idx){
+  const r = filteredRecords[idx];
+  const pass = r.pass==='通過';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="score-big">
+      <div class="num ${pass?'pass':'fail'}">${r.score} / 20</div>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--ink2);margin:.4rem 0 .2rem">分數 ${Number(r.score)*5} 分</div>
+      <div class="sub"><span class="badge ${pass?'pass':'fail'}">${r.pass}</span></div>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="lbl">姓名</div><div class="val">${r.name}</div></div>
+      <div class="detail-item"><div class="lbl">部門</div><div class="val">${r.dept}</div></div>
+      <div class="detail-item"><div class="lbl">工號</div><div class="val">${r.empId}</div></div>
+      <div class="detail-item"><div class="lbl">測驗時間</div><div class="val">${formatTimestamp(r.timestamp)}</div></div>
+      <div class="detail-item"><div class="lbl">答錯題數</div><div class="val">${r.wrongCount} 題</div></div>
+      <div class="detail-item"><div class="lbl">作答時間</div><div class="val">${r.timeSpent}</div></div>
+    </div>`;
+  document.getElementById('modal-detail').classList.add('open');
+}
+function closeModal(){ document.getElementById('modal-detail').classList.remove('open'); }
+document.getElementById('modal-detail').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
+
+// ═══════════ EXPORT CSV ═══════════
+function exportCSV(){
+  if(!filteredRecords.length){ alert('沒有可匯出的資料'); return; }
+  const header = ['測驗時間','姓名','部門','工號','分數','正確率','是否通過','答錯題數','作答時間'];
+  const rows   = filteredRecords.map(r=>[
+    `"${r.timestamp}"`,`"${r.name}"`,`"${r.dept}"`,`"${r.empId}"`,
+    r.score, `"${r.pct}"`, `"${r.pass}"`, r.wrongCount, `"${r.timeSpent}"`
+  ].join(','));
+  const csv  = '﻿' + [header.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=`職安訓練紀錄_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'')}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ═══════════ CONFIG ═══════════
+function saveConfig(){
+  const url = document.getElementById('cfg-url').value.trim();
+  GS_URL = url;
+  localStorage.setItem(CFG_KEY, url);
+  const r = document.getElementById('cfg-result');
+  r.textContent = '✅ 設定已儲存';
+  r.style.color = 'var(--green)';
+  setTimeout(()=>r.textContent='',3000);
+}
+
+function testConnection(){
+  const url = document.getElementById('cfg-url').value.trim();
+  const r   = document.getElementById('cfg-result');
+  if(!url){ r.textContent='⚠️ 請先填入 URL'; r.style.color='var(--accent)'; return; }
+  r.textContent='測試連線中…'; r.style.color='var(--ink3)';
+  fetch(`${url}?action=stats`)
+    .then(res=>res.json())
+    .then(d=>{
+      r.textContent = `✅ 連線成功！試算表共 ${d.total||0} 筆紀錄`;
+      r.style.color = 'var(--green)';
+    })
+    .catch(()=>{
+      r.textContent = '❌ 連線失敗，請確認 URL 是否正確且已部署為「所有人可存取」';
+      r.style.color = 'var(--accent)';
+    });
+}
+
+// ═══════════ ADMIN MANAGEMENT ═══════════
+const ADMINS_KEY = 'safety_admins';
+
+function getCachedAdmins(){
+  const raw = localStorage.getItem(ADMINS_KEY);
+  if(raw) try{ return JSON.parse(raw); }catch(e){}
+  return [{ id:'1', name:'系統管理員', username:'admin', email:'', role:'超級管理員', password:'admin1234' }];
+}
+function setCachedAdmins(list){ localStorage.setItem(ADMINS_KEY, JSON.stringify(list)); }
+
+// 從 GS 載入管理員並更新快取
+function loadAdminsFromGS(callback){
+  const el = document.getElementById('admin-list');
+  if(el) el.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--ink3)"><div class="spinner" style="margin:0 auto .5rem"></div><div>載入中…</div></div>';
+  if(!GS_URL){ renderAdminList(); if(callback) callback(); return; }
+  fetch(`${GS_URL}?action=getAdmins`)
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.admins){ setCachedAdmins(d.admins); }
+      renderAdminList();
+      if(callback) callback();
+    })
+    .catch(()=>{ renderAdminList(); if(callback) callback(); });
+}
+
+function renderAdminList(){
+  const list = getCachedAdmins();
+  const el = document.getElementById('admin-list');
+  if(!el) return;
+  if(!list.length){ el.innerHTML='<div style="padding:2rem;text-align:center;color:var(--ink3)">尚無管理員資料</div>'; return; }
+  el.innerHTML = list.map(a=>`
+    <div class="admin-row">
+      <div class="admin-av">${a.name.charAt(0)}</div>
+      <div class="admin-info">
+        <div class="admin-name">${a.name}</div>
+        <div class="admin-meta">${a.username}${a.email?' · '+a.email:''}</div>
+      </div>
+      <div class="admin-actions">
+        <span class="role-badge">${a.role}</span>
+        <button class="btn-sm btn-secondary" onclick="openAdminModal('${a.id}')">編輯</button>
+        <button class="btn-sm btn-danger" onclick="deleteAdmin('${a.id}')">刪除</button>
+      </div>
+    </div>`).join('');
+}
+
+function openAdminModal(id){
+  const isEdit = !!id;
+  document.getElementById('admin-modal-title').textContent = isEdit ? '編輯管理員' : '新增管理員';
+  document.getElementById('adm-err').style.display = 'none';
+  document.getElementById('adm-id').value = id || '';
+  document.getElementById('adm-pwd-label').innerHTML = isEdit
+    ? '新密碼 <span style="color:var(--ink3);font-weight:400">（不修改請留空）</span>'
+    : '密碼 <span style="color:var(--red)">*</span>';
+  document.getElementById('adm-pwd-hint').textContent = isEdit ? '留空表示不變更密碼' : '';
+  if(isEdit){
+    const a = getCachedAdmins().find(x=>x.id===id);
+    document.getElementById('adm-name').value     = a.name;
+    document.getElementById('adm-username').value = a.username;
+    document.getElementById('adm-email').value    = a.email || '';
+    document.getElementById('adm-role').value     = a.role;
+    document.getElementById('adm-pwd').value      = '';
+  } else {
+    ['adm-name','adm-username','adm-email','adm-pwd'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('adm-role').value = '超級管理員';
+  }
+  document.getElementById('modal-admin').classList.add('open');
+}
+
+function closeAdminModal(){ document.getElementById('modal-admin').classList.remove('open'); }
+
+function saveAdmin(){
+  const id       = document.getElementById('adm-id').value;
+  const name     = document.getElementById('adm-name').value.trim();
+  const username = document.getElementById('adm-username').value.trim();
+  const email    = document.getElementById('adm-email').value.trim();
+  const role     = document.getElementById('adm-role').value;
+  const pwd      = document.getElementById('adm-pwd').value;
+  const errEl    = document.getElementById('adm-err');
+  const saveBtn  = document.querySelector('#modal-admin .btn-primary');
+
+  errEl.style.display = 'none';
+  if(!name || !username){ errEl.textContent='姓名與帳號為必填'; errEl.style.display='block'; return; }
+  if(!id && !pwd){ errEl.textContent='新增管理員時密碼為必填'; errEl.style.display='block'; return; }
+
+  const list = getCachedAdmins();
+  const dup  = list.find(a=>a.username===username && a.id!==id);
+  if(dup){ errEl.textContent='此帳號已存在，請使用其他帳號'; errEl.style.display='block'; return; }
+
+  saveBtn.textContent='儲存中…'; saveBtn.disabled=true;
+
+  const payload = id
+    ? { action:'updateAdmin', id, name, username, email, role, ...(pwd?{password:pwd}:{}) }
+    : { action:'addAdmin', id:Date.now().toString(), name, username, email, role, password:pwd };
+
+  const doLocalSave = () => {
+    if(id){
+      const idx = list.findIndex(a=>a.id===id);
+      list[idx] = { ...list[idx], name, username, email, role, ...(pwd?{password:pwd}:{}) };
+    } else {
+      list.push({ id:payload.id, name, username, email, role, password:pwd });
+    }
+    setCachedAdmins(list);
+    closeAdminModal();
+    renderAdminList();
+    saveBtn.textContent='儲存'; saveBtn.disabled=false;
+  };
+
+  if(!GS_URL){ doLocalSave(); return; }
+
+  fetch(GS_URL, { method:'POST', body:JSON.stringify(payload) })
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.status==='error'){ errEl.textContent=d.message||'儲存失敗'; errEl.style.display='block'; saveBtn.textContent='儲存'; saveBtn.disabled=false; return; }
+      doLocalSave();
+      loadAdminsFromGS(); // 重新從 GS 同步
+    })
+    .catch(()=>{
+      // GS 失敗時僅更新本地快取
+      doLocalSave();
+    });
+}
+
+function deleteAdmin(id){
+  const list = getCachedAdmins();
+  if(list.length <= 1){ alert('至少須保留一位管理員'); return; }
+  const a = list.find(x=>x.id===id);
+  if(!confirm(`確定要刪除管理員「${a.name}」？`)) return;
+
+  const doLocalDelete = () => {
+    setCachedAdmins(list.filter(x=>x.id!==id));
+    renderAdminList();
+  };
+
+  if(!GS_URL){ doLocalDelete(); return; }
+
+  fetch(GS_URL, { method:'POST', body:JSON.stringify({ action:'deleteAdmin', id }) })
+    .then(r=>r.json())
+    .then(()=>{ doLocalDelete(); loadAdminsFromGS(); })
+    .catch(()=>doLocalDelete());
+}
+
+document.getElementById('modal-admin').addEventListener('click', function(e){ if(e.target===this) closeAdminModal(); });
+
+// ═══════════ INIT ═══════════
+document.getElementById('cfg-url').value = GS_URL;
+renderAdminList();
+</script>
+</body>
+</html>
