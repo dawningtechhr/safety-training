@@ -156,6 +156,28 @@ tr:hover td{background:var(--paper)}
 .pg-btn:hover{background:var(--paper2)}
 .pg-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .pg-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* UPLOAD ZONE */
+.upload-zone{border:2px dashed var(--paper3);border-radius:var(--radius-lg);padding:2rem;text-align:center;cursor:pointer;transition:border-color .2s}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:var(--accent-light)}
+.upload-zone p{color:var(--ink3);font-size:.85rem;margin-top:.5rem}
+.upload-zone input[type=file]{display:none}
+
+/* NOTIFICATION CARDS */
+.notif-card{background:#fff;border:1px solid var(--paper3);border-radius:var(--radius-lg);padding:1.4rem;margin-bottom:1rem}
+.notif-card h3{font-size:.95rem;font-weight:700;margin-bottom:.75rem;padding-bottom:.6rem;border-bottom:1px solid var(--paper3)}
+.notif-row{display:flex;align-items:center;gap:1rem;margin-bottom:.75rem}
+.notif-row label{font-size:.85rem;color:var(--ink2);width:160px;flex-shrink:0}
+.notif-row input[type=date],.notif-row input[type=number]{max-width:200px}
+.toggle-wrap{display:flex;align-items:center;gap:.75rem}
+.toggle{position:relative;display:inline-block;width:44px;height:24px}
+.toggle input{display:none}
+.toggle-slider{position:absolute;inset:0;background:var(--paper3);border-radius:12px;cursor:pointer;transition:.2s}
+.toggle-slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.toggle input:checked+.toggle-slider{background:var(--accent)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(20px)}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:.4rem}
+.status-dot.on{background:var(--green)}.status-dot.off{background:var(--ink3)}
 </style>
 </head>
 <body>
@@ -190,6 +212,8 @@ tr:hover td{background:var(--paper)}
       <div class="nav-item active" onclick="showTab('dashboard')"><span class="ni">📊</span>儀表板</div>
       <div class="nav-item" onclick="showTab('records')"><span class="ni">📋</span>測驗紀錄</div>
       <div class="nav-item" onclick="showTab('admins');loadAdminsFromGS()"><span class="ni">👤</span>管理員設定</div>
+      <div class="nav-item" onclick="showTab('designated');loadDesignated()"><span class="ni">📋</span>指定人員設定</div>
+      <div class="nav-item" onclick="showTab('notification');loadReminderSettings()"><span class="ni">🔔</span>通知設定</div>
     </nav>
     <div class="sb-footer">
       <div class="sb-user">
@@ -259,6 +283,66 @@ tr:hover td{background:var(--paper)}
       </div>
     </div>
 
+    <!-- DESIGNATED PERSONS -->
+    <div class="tab-content" id="tab-designated">
+      <div class="page-title">指定人員設定</div>
+      <div class="page-sub">管理需完成訓練的指定人員名單，測驗完成後自動更新結果</div>
+      <div class="table-wrap">
+        <div class="table-head">
+          <h3>人員列表 <span id="desig-count" style="font-size:.8rem;font-weight:400;color:var(--ink3)"></span></h3>
+          <div class="table-actions">
+            <button class="btn-sm btn-secondary" onclick="loadDesignated()">🔄 重新整理</button>
+            <button class="btn-sm btn-secondary" onclick="openUploadModal()">⬆ 批次上傳</button>
+            <button class="btn-sm btn-primary" onclick="openAddPersonModal()">＋ 新增人員</button>
+          </div>
+        </div>
+        <div id="desig-table-wrap">
+          <div class="loading-wrap"><div class="spinner"></div><div>資料載入中…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATION SETTINGS -->
+    <div class="tab-content" id="tab-notification">
+      <div class="page-title">通知設定</div>
+      <div class="page-sub">發送訓練通知給指定人員，並設定定期提醒排程</div>
+
+      <div class="notif-card">
+        <h3>立即發送通知</h3>
+        <p style="font-size:.85rem;color:var(--ink2);margin-bottom:1rem">對指定人員名單中<strong>所有人員</strong>發送教育訓練通知信，邀請點選連結完成訓練及測驗。</p>
+        <div style="font-size:.8rem;color:var(--ink3);background:var(--paper2);padding:.75rem 1rem;border-radius:var(--radius);margin-bottom:1rem;word-break:break-all">
+          訓練連結：<a href="https://dawningtechhr.github.io/safety-training/safety-training.html" target="_blank" style="color:var(--accent)">https://dawningtechhr.github.io/safety-training/safety-training.html</a>
+        </div>
+        <button class="btn-sm btn-primary" onclick="sendInitialNotification()">📧 立即發送通知給全體指定人員</button>
+        <span id="notif-send-result" style="margin-left:.75rem;font-size:.82rem"></span>
+      </div>
+
+      <div class="notif-card">
+        <h3>定期提醒排程</h3>
+        <p style="font-size:.85rem;color:var(--ink2);margin-bottom:1rem">自動對名單中<strong>結果為空白或未通過</strong>的人員發送提醒，請他們完成測驗。</p>
+        <div class="notif-row">
+          <label>啟用定期提醒</label>
+          <div class="toggle-wrap">
+            <label class="toggle"><input type="checkbox" id="notif-enabled"><span class="toggle-slider"></span></label>
+            <span id="notif-status-text" style="font-size:.82rem;color:var(--ink3)"><span class="status-dot off"></span>未啟用</span>
+          </div>
+        </div>
+        <div class="notif-row">
+          <label>起始通知日期</label>
+          <input type="date" id="notif-start-date">
+        </div>
+        <div class="notif-row">
+          <label>提醒頻率（天）</label>
+          <input type="number" id="notif-frequency" min="1" max="365" value="7" style="max-width:100px">
+          <span style="font-size:.82rem;color:var(--ink3)">天發送一次</span>
+        </div>
+        <div id="notif-last-sent" style="font-size:.78rem;color:var(--ink3);margin-bottom:.75rem"></div>
+        <button class="btn-sm btn-primary" onclick="saveReminderSettings()">💾 儲存排程設定</button>
+        <span id="notif-save-result" style="margin-left:.75rem;font-size:.82rem"></span>
+        <div style="margin-top:.75rem;font-size:.75rem;color:var(--ink3)">⚠️ 定期提醒需在 Google Apps Script 編輯器中授權 trigger 執行權限</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -306,6 +390,71 @@ tr:hover td{background:var(--paper)}
   </div>
 </div>
 
+<!-- ADD PERSON MODAL -->
+<div class="modal-overlay" id="modal-add-person">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>新增指定人員</h3>
+      <button class="btn-close" onclick="closeAddPersonModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-form">
+        <div class="form-group">
+          <label>部門 <span style="color:var(--red)">*</span></label>
+          <input type="text" id="ap-dept" placeholder="請輸入部門">
+        </div>
+        <div class="form-group">
+          <label>工號 <span style="color:var(--red)">*</span></label>
+          <input type="text" id="ap-empid" placeholder="請輸入工號">
+        </div>
+        <div class="form-group">
+          <label>姓名 <span style="color:var(--red)">*</span></label>
+          <input type="text" id="ap-name" placeholder="請輸入姓名">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="ap-email" placeholder="選填，用於通知發送">
+        </div>
+        <div id="ap-err" style="color:var(--red);font-size:.8rem;margin-bottom:.5rem;display:none"></div>
+        <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn-sm btn-secondary" onclick="closeAddPersonModal()">取消</button>
+          <button class="btn-sm btn-primary" id="ap-save-btn" onclick="saveAddPerson()">新增</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div class="modal-overlay" id="modal-upload">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>批次上傳指定人員</h3>
+      <button class="btn-close" onclick="closeUploadModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:var(--ink2);margin-bottom:.75rem">上傳 CSV 檔案或貼上資料（格式：部門,工號,姓名,email，第一列為標題）。<br>上傳後將<strong>取代</strong>現有名單，原有結果欄位將被清空。</p>
+      <div style="background:var(--paper2);border-radius:var(--radius);padding:.6rem .9rem;font-family:monospace;font-size:.78rem;color:var(--ink2);margin-bottom:.9rem">
+        部門,工號,姓名,email<br>人資部,A001,王小明,wang@example.com<br>業務部,A002,李小華,lee@example.com
+      </div>
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('csv-file').click()">
+        <input type="file" id="csv-file" accept=".csv,text/csv" onchange="handleFileSelect(event)">
+        <div style="font-size:2rem">📁</div>
+        <p>點擊選擇 CSV 檔案，或將檔案拖曳至此</p>
+        <p id="file-name" style="color:var(--accent);font-weight:500;margin-top:.35rem"></p>
+      </div>
+      <div style="text-align:center;margin:.75rem 0;color:var(--ink3);font-size:.8rem">— 或 —</div>
+      <textarea id="csv-paste" placeholder="貼上 CSV 內容…" style="width:100%;height:120px;font-family:monospace;font-size:.78rem;padding:.75rem;border:1px solid var(--paper3);border-radius:var(--radius);outline:none;resize:vertical;color:var(--ink);background:var(--paper)"></textarea>
+      <div id="upload-preview" style="margin-top:.75rem;font-size:.82rem;color:var(--ink2)"></div>
+      <div id="upload-err" style="color:var(--red);font-size:.8rem;margin-top:.5rem;display:none"></div>
+      <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem">
+        <button class="btn-sm btn-secondary" onclick="closeUploadModal()">取消</button>
+        <button class="btn-sm btn-primary" id="upload-confirm-btn" onclick="confirmUpload()">確認上傳</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- DETAIL MODAL -->
 <div class="modal-overlay" id="modal-detail">
   <div class="modal">
@@ -320,7 +469,7 @@ tr:hover td{background:var(--paper)}
 <script>
 // ═══════════ CONFIG ═══════════
 const CFG_KEY = 'safety_admin_url';
-let GS_URL = localStorage.getItem(CFG_KEY) || 'https://script.google.com/macros/s/AKfycbxqcqmsgIvVXtISxxxihFtDaIGzwjq8vgR1ujESeklIdDrjHzuUpBFaryEjWEi2C7F82w/exec';
+let GS_URL = localStorage.getItem(CFG_KEY) || 'https://script.google.com/macros/s/AKfycbwcA0C5bO666DNki835oT041_qfHaAUmEdSPArxk1sxwgUIeDNFTbE2iFA9GUmdyjTEww/exec';
 let allRecords = [];
 let filteredRecords = [];
 let currentPage = 1;
@@ -421,7 +570,7 @@ function showTab(name){
   document.getElementById('tab-'+name).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>{ if(n.textContent.includes(tabLabel(name))) n.classList.add('active'); });
 }
-function tabLabel(n){ return {dashboard:'儀表板',records:'測驗紀錄',config:'系統設定'}[n]||n; }
+function tabLabel(n){ return {dashboard:'儀表板',records:'測驗紀錄',admins:'管理員設定',designated:'指定人員設定',notification:'通知設定',config:'系統設定'}[n]||n; }
 
 // ═══════════ DASHBOARD ═══════════
 function loadDashboard(){
@@ -798,8 +947,233 @@ function deleteAdmin(id){
 
 document.getElementById('modal-admin').addEventListener('click', function(e){ if(e.target===this) closeAdminModal(); });
 
+// ═══════════ DESIGNATED PERSONS ═══════════
+let designatedData = [];
+
+function loadDesignated() {
+  const wrap = document.getElementById('desig-table-wrap');
+  wrap.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div>資料載入中…</div></div>';
+  if (!GS_URL) { renderDesignatedTable([]); return; }
+  fetch(`${GS_URL}?action=getDesignated`)
+    .then(r => r.json())
+    .then(d => { designatedData = d.designated || []; renderDesignatedTable(designatedData); })
+    .catch(() => { wrap.innerHTML = '<div class="table-empty">❌ 無法連線，請確認 Apps Script URL</div>'; });
+}
+
+function renderDesignatedTable(list) {
+  document.getElementById('desig-count').textContent = list.length ? `（共 ${list.length} 人）` : '';
+  const wrap = document.getElementById('desig-table-wrap');
+  if (!list.length) {
+    wrap.innerHTML = '<div class="table-empty">尚無指定人員，請點擊「新增人員」或「批次上傳」</div>';
+    return;
+  }
+  wrap.innerHTML = `<table><thead><tr>
+    <th>#</th><th>部門</th><th>工號</th><th>姓名</th><th>Email</th><th>結果</th><th></th>
+  </tr></thead><tbody>${list.map((r, i) => `<tr>
+    <td style="color:var(--ink3)">${i+1}</td>
+    <td>${r.dept}</td>
+    <td style="color:var(--ink3)">${r.empId}</td>
+    <td><strong>${r.name}</strong></td>
+    <td style="color:var(--ink3)">${r.email || '—'}</td>
+    <td>${r.result ? `<span class="badge ${r.result==='通過'?'pass':'fail'}">${r.result}</span>` : '<span style="color:var(--ink3);font-size:.8rem">未完成</span>'}</td>
+    <td><button class="btn-sm btn-danger" data-del-empid="${r.empId}" data-del-name="${r.name}">刪除</button></td>
+  </tr>`).join('')}</tbody></table>`;
+  wrap.querySelectorAll('button[data-del-empid]').forEach(btn => {
+    btn.addEventListener('click', () => deleteDesignatedPerson(btn.dataset.delEmpid, btn.dataset.delName));
+  });
+}
+
+function deleteDesignatedPerson(empId, name) {
+  if (!confirm(`確定要從指定人員名單中移除「${name}」？`)) return;
+  designatedData = designatedData.filter(r => r.empId !== empId);
+  fetch(GS_URL, { method: 'POST', body: JSON.stringify({ action: 'uploadDesignated', list: designatedData }) })
+    .then(r => r.json())
+    .then(() => renderDesignatedTable(designatedData))
+    .catch(() => renderDesignatedTable(designatedData));
+}
+
+// ── Add Person Modal ──
+function openAddPersonModal() {
+  ['ap-dept','ap-empid','ap-name','ap-email'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ap-err').style.display = 'none';
+  document.getElementById('modal-add-person').classList.add('open');
+}
+function closeAddPersonModal() { document.getElementById('modal-add-person').classList.remove('open'); }
+document.getElementById('modal-add-person').addEventListener('click', function(e){ if(e.target===this) closeAddPersonModal(); });
+
+function saveAddPerson() {
+  const dept  = document.getElementById('ap-dept').value.trim();
+  const empId = document.getElementById('ap-empid').value.trim();
+  const name  = document.getElementById('ap-name').value.trim();
+  const email = document.getElementById('ap-email').value.trim();
+  const errEl = document.getElementById('ap-err');
+  const btn   = document.getElementById('ap-save-btn');
+
+  errEl.style.display = 'none';
+  if (!dept || !empId || !name) { errEl.textContent = '部門、工號、姓名為必填'; errEl.style.display = 'block'; return; }
+  if (designatedData.some(r => r.empId === empId)) { errEl.textContent = '此工號已存在於名單中'; errEl.style.display = 'block'; return; }
+
+  btn.textContent = '新增中…'; btn.disabled = true;
+  const newList = [...designatedData, { dept, empId, name, email, result: '' }];
+
+  fetch(GS_URL, { method: 'POST', body: JSON.stringify({ action: 'uploadDesignated', list: newList }) })
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'error') { errEl.textContent = d.message || '新增失敗'; errEl.style.display = 'block'; return; }
+      designatedData = newList;
+      renderDesignatedTable(designatedData);
+      closeAddPersonModal();
+    })
+    .catch(() => { errEl.textContent = '連線失敗，請稍後再試'; errEl.style.display = 'block'; })
+    .finally(() => { btn.textContent = '新增'; btn.disabled = false; });
+}
+
+// ── Upload Modal ──
+let parsedUploadData = [];
+
+function openUploadModal() {
+  parsedUploadData = [];
+  document.getElementById('csv-paste').value = '';
+  document.getElementById('file-name').textContent = '';
+  document.getElementById('upload-preview').textContent = '';
+  document.getElementById('upload-err').style.display = 'none';
+  document.getElementById('modal-upload').classList.add('open');
+}
+function closeUploadModal() { document.getElementById('modal-upload').classList.remove('open'); }
+document.getElementById('modal-upload').addEventListener('click', function(e){ if(e.target===this) closeUploadModal(); });
+
+// Drag & drop
+const uploadZone = document.getElementById('upload-zone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) readCsvFile(file);
+});
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) readCsvFile(file);
+}
+
+function readCsvFile(file) {
+  document.getElementById('file-name').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    document.getElementById('csv-paste').value = evt.target.result;
+    previewCsv(evt.target.result);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+document.getElementById('csv-paste').addEventListener('input', function() {
+  previewCsv(this.value);
+});
+
+function previewCsv(text) {
+  const errEl = document.getElementById('upload-err');
+  errEl.style.display = 'none';
+  parsedUploadData = [];
+  const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+  if (!lines.length) { document.getElementById('upload-preview').textContent = ''; return; }
+  // Skip header row if it matches expected pattern
+  const start = /部門|dept/i.test(lines[0]) ? 1 : 0;
+  const rows = lines.slice(start);
+  const errors = [];
+  parsedUploadData = rows.map((line, idx) => {
+    const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+    if (cols.length < 3) { errors.push(`第 ${idx + start + 1} 列欄位不足`); return null; }
+    return { dept: cols[0], empId: cols[1], name: cols[2], email: cols[3] || '' };
+  }).filter(Boolean);
+  if (errors.length) { errEl.textContent = errors.slice(0,3).join('；'); errEl.style.display = 'block'; }
+  document.getElementById('upload-preview').textContent = parsedUploadData.length
+    ? `✅ 解析成功：共 ${parsedUploadData.length} 筆資料` : '⚠️ 未解析到資料';
+}
+
+function confirmUpload() {
+  const errEl = document.getElementById('upload-err');
+  if (!parsedUploadData.length) { errEl.textContent = '請先選擇或貼上有效的 CSV 資料'; errEl.style.display = 'block'; return; }
+  if (!confirm(`確認上傳 ${parsedUploadData.length} 筆人員資料？這將取代現有名單，原有結果將被清空。`)) return;
+
+  const btn = document.getElementById('upload-confirm-btn');
+  btn.textContent = '上傳中…'; btn.disabled = true;
+
+  fetch(GS_URL, { method: 'POST', body: JSON.stringify({ action: 'uploadDesignated', list: parsedUploadData }) })
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'error') { errEl.textContent = d.message || '上傳失敗'; errEl.style.display = 'block'; return; }
+      closeUploadModal();
+      loadDesignated();
+      alert(`✅ 上傳成功！共 ${d.count} 筆人員資料`);
+    })
+    .catch(() => { errEl.textContent = '連線失敗，請稍後再試'; errEl.style.display = 'block'; })
+    .finally(() => { btn.textContent = '確認上傳'; btn.disabled = false; });
+}
+
+// ═══════════ NOTIFICATION SETTINGS ═══════════
+function loadReminderSettings() {
+  if (!GS_URL) return;
+  fetch(`${GS_URL}?action=getReminderSettings`)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('notif-enabled').checked = d.enabled === 'true';
+      document.getElementById('notif-start-date').value = d.startDate || '';
+      document.getElementById('notif-frequency').value  = d.frequency || '7';
+      updateToggleStatus();
+      const lastEl = document.getElementById('notif-last-sent');
+      lastEl.textContent = d.lastSent ? `上次發送：${new Date(d.lastSent).toLocaleString('zh-TW')}` : '';
+    })
+    .catch(() => {});
+}
+
+document.getElementById('notif-enabled').addEventListener('change', updateToggleStatus);
+function updateToggleStatus() {
+  const on = document.getElementById('notif-enabled').checked;
+  const el = document.getElementById('notif-status-text');
+  el.innerHTML = on
+    ? '<span class="status-dot on"></span>已啟用'
+    : '<span class="status-dot off"></span>未啟用';
+}
+
+function saveReminderSettings() {
+  const enabled   = document.getElementById('notif-enabled').checked;
+  const startDate = document.getElementById('notif-start-date').value;
+  const frequency = parseInt(document.getElementById('notif-frequency').value) || 7;
+  const resEl     = document.getElementById('notif-save-result');
+
+  if (enabled && !startDate) { resEl.style.color = 'var(--red)'; resEl.textContent = '⚠️ 請設定起始日期'; return; }
+
+  resEl.style.color = 'var(--ink3)'; resEl.textContent = '儲存中…';
+  fetch(GS_URL, { method: 'POST', body: JSON.stringify({ action: 'setReminderSchedule', enabled, startDate, frequency }) })
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'ok') { resEl.style.color = 'var(--green)'; resEl.textContent = '✅ 設定已儲存'; }
+      else { resEl.style.color = 'var(--red)'; resEl.textContent = '❌ ' + (d.message || '儲存失敗'); }
+      setTimeout(() => resEl.textContent = '', 4000);
+    })
+    .catch(() => { resEl.style.color = 'var(--red)'; resEl.textContent = '❌ 連線失敗'; });
+}
+
+function sendInitialNotification() {
+  if (!confirm('確定要立即發送通知信給全體指定人員嗎？')) return;
+  const resEl = document.getElementById('notif-send-result');
+  resEl.style.color = 'var(--ink3)'; resEl.textContent = '發送中…';
+  fetch(GS_URL, { method: 'POST', body: JSON.stringify({ action: 'sendInitialNotification' }) })
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'ok') {
+        resEl.style.color = 'var(--green)';
+        resEl.textContent = `✅ 已發送 ${d.sent} 封，略過 ${d.skipped} 筆（無 Email）`;
+      } else {
+        resEl.style.color = 'var(--red)'; resEl.textContent = '❌ ' + (d.message || '發送失敗');
+      }
+      setTimeout(() => resEl.textContent = '', 6000);
+    })
+    .catch(() => { resEl.style.color = 'var(--red)'; resEl.textContent = '❌ 連線失敗'; });
+}
+
 // ═══════════ INIT ═══════════
-document.getElementById('cfg-url').value = GS_URL;
 renderAdminList();
 </script>
 </body>
